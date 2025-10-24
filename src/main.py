@@ -166,7 +166,7 @@ def init_ui(api: sly.Api, task_id, app_logger):
         "projectPreviewUrl2": api.image.preview_url(PROJECT2.reference_image_url, 100, 100),
         "table": result,
         "images": {"columns": [], "data": []},
-        "mergeOptions": ["unify", "intersect"],
+        "mergeOptions": ["unify", "intersect", "unique only", "unique left", "unique right"],
         "resolveOptions": ["skip image", "use left", "use right"],
         "createdProjectId": None,
         "createdProjectName": None,
@@ -272,6 +272,8 @@ def merge(api: sly.Api, task_id, context, state, app_logger):
 
             # "matched", "conflicts", "unique (left)", "unique (right)"
             if message == "matched":
+                if state["merge"] in ["unique only", "unique left", "unique right"]:
+                    continue
                 progress_img = sly.Progress(f"Images", len(images))
                 progress_ann = sly.Progress(f"Annotations", len(images))
                 _increment_progress(api, task_id, progress_img)
@@ -382,6 +384,8 @@ def merge(api: sly.Api, task_id, context, state, app_logger):
                     _increment_progress(api, task_id, progress_ann, len(anns))
 
             elif message == "conflicts":
+                if state["merge"] in ["unique only", "unique left", "unique right"]:
+                    continue
                 #["unify", "intersect"]
                 if state["merge"] == "intersect" or state["resolve"] == "skip image":
                     continue
@@ -390,8 +394,12 @@ def merge(api: sly.Api, task_id, context, state, app_logger):
                 elif state["resolve"] == "use right":
                     res_dataset = _add_simple(res_dataset, images, right_ds)
             elif message == "unique (left)" or message == 'new dataset (left)':
+                if state["merge"] == "unique right":
+                    continue
                 res_dataset = _add_simple(res_dataset, images, left_ds)
             elif message == "unique (right)" or message == 'new dataset (right)':
+                if state["merge"] == "unique left":
+                    continue
                 res_dataset = _add_simple(res_dataset, images, right_ds)
 
     fields = [
